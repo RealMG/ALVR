@@ -1,5 +1,6 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 #include "d3drender.h"
+#include <algorithm>
 #include <D3d11_4.h>
 #include <Evntprov.h>
 
@@ -166,7 +167,7 @@ void CD3DRender::GetDisplaySize( uint32_t *pDisplayWidth, uint32_t *pDisplayHeig
 //--------------------------------------------------------------------------------------------------
 // Purpose: Return the DXGI index and name of the adapter currently in use.
 //--------------------------------------------------------------------------------------------------
-bool CD3DRender::GetAdapterInfo( int32_t *pAdapterIndex, wchar_t *pBuffer, uint32_t nBufferCount )
+bool CD3DRender::GetAdapterInfo( int32_t *pAdapterIndex, std::wstring &adapterName )
 {
 	if ( m_pD3D11Device == NULL )
 		return false;
@@ -197,8 +198,7 @@ bool CD3DRender::GetAdapterInfo( int32_t *pAdapterIndex, wchar_t *pBuffer, uint3
 						if ( pAdapterIndex )
 							*pAdapterIndex = nAdapterIndex;
 
-						if ( pBuffer && nBufferCount )
-							wcsncpy_s( pBuffer, nBufferCount, adapterDesc.Description, ARRAYSIZE( adapterDesc.Description ) );
+						adapterName = adapterDesc.Description;
 
 						bSuccess = true;
 						break;
@@ -441,7 +441,7 @@ void CD3DRender::CopyTextureData( BYTE *pDst, uint32_t nDstRowPitch,
 	}
 	else
 	{
-		uint32_t nMinRowPitch = min( nDstRowPitch, nSrcRowPitch );
+		uint32_t nMinRowPitch = std::min( nDstRowPitch, nSrcRowPitch );
 		for ( uint32_t i = 0; i < nHeight; i++ )
 		{
 			memcpy( pDst, pSrc, nMinRowPitch );

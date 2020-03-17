@@ -1,7 +1,7 @@
 #include <ScreenGrab.h>
 #include "VideoEncoder.h"
 
-void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
+void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> mD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
 	if (vPacket.size() == 0) {
 		return;
 	}
@@ -13,8 +13,8 @@ void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std
 		// SPS, PPS, IDR
 		char filename[1000];
 		wchar_t filename2[1000];
-		snprintf(filename, sizeof(filename), "%s\\%llu.h264", Settings::Instance().m_DebugOutputDir.c_str(), frameIndex);
-		_snwprintf_s(filename2, sizeof(filename2), L"%hs\\%llu.dds", Settings::Instance().m_DebugOutputDir.c_str(), frameIndex);
+		snprintf(filename, sizeof(filename), "%s\\%llu.h264", Settings::Instance().mDebugOutputDir.c_str(), frameIndex);
+		_snwprintf_s(filename2, sizeof(filename2), L"%hs\\%llu.dds", Settings::Instance().mDebugOutputDir.c_str(), frameIndex);
 		FILE *fp;
 		fopen_s(&fp, filename, "wb");
 		if (fp) {
@@ -23,6 +23,6 @@ void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std
 			}
 			fclose(fp);
 		}
-		DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), texture, filename2);
+		DirectX::SaveDDSTextureToFile(mD3DRender->GetContext(), texture, filename2);
 	}
 }

@@ -3,6 +3,7 @@
 #include "Utils.h"
 
 IDRScheduler::IDRScheduler()
+ : mState(State::NOT_STREAMING)
 {
 }
 
@@ -13,38 +14,35 @@ IDRScheduler::~IDRScheduler()
 
 void IDRScheduler::OnPacketLoss()
 {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_scheduled) {
-		// Waiting next insertion.
-		return;
-	}
-	if (GetTimestampUs() - m_insertIDRTime > MIN_IDR_FRAME_INTERVAL) {
-		// Insert immediately
-		m_insertIDRTime = GetTimestampUs();
-		m_scheduled = true;
-	}
-	else {
-		// Schedule next insertion.
-		m_insertIDRTime += MIN_IDR_FRAME_INTERVAL;
-		m_scheduled = true;
-	}
+	mState = State::REQUESTING_IDR;
 }
 
-void IDRScheduler::OnClientConnected()
+void IDRScheduler::OnStreamStart()
 {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	// Force insert IDR-frame
-	m_insertIDRTime = GetTimestampUs();
-	m_scheduled = true;
+	mState = State::REQUESTING_IDR;
 }
 
 bool IDRScheduler::CheckIDRInsertion() {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_scheduled) {
-		if (m_insertIDRTime <= GetTimestampUs()) {
-			m_scheduled = false;
-			return true;
-		}
+	if (mState == State::REQUESTING_IDR) {
+		mState = State::SENDING_IDR;
+		return true;
 	}
 	return false;
+}
+
+void IDRScheduler::OnFrameAck(bool result, bool isIDR)
+{
+	if (isIDR) {
+		if (result) {
+			mState = State::STREAMING;
+		}
+		else {
+			mState = State::REQUESTING_IDR;
+		}
+	}
+}
+
+bool IDRScheduler::CanEncodeFrame()
+{
+	return mState == State::REQUESTING_IDR || mState == State::STREAMING;
 }

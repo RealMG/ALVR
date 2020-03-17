@@ -1,10 +1,11 @@
 #pragma once
 
+#pragma warning(disable:4005)
 #include <WinSock2.h>
+#pragma warning(default:4005)
 #include <WinInet.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
-#include <delayimp.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -16,7 +17,10 @@
 #include "openvr_driver.h"
 #include "packet_types.h"
 
-extern HINSTANCE g_hInstance;
+extern HINSTANCE gInstance;
+
+const uint64_t US_TO_MS = 1000;
+extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
@@ -29,6 +33,20 @@ inline uint64_t GetTimestampUs() {
 	Current /= 10;
 
 	return Current;
+}
+
+// Get performance counter in us
+inline uint64_t GetCounterUs() {
+	if (gPerformanceCounterFrequency == 0) {
+		LARGE_INTEGER freq;
+		QueryPerformanceFrequency(&freq);
+		gPerformanceCounterFrequency = freq.QuadPart;
+	}
+
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+
+	return counter.QuadPart * 1000000LLU / gPerformanceCounterFrequency;
 }
 
 inline std::string DumpMatrix(const float *m) {
@@ -45,7 +63,7 @@ inline std::string DumpMatrix(const float *m) {
 	return std::string(buf);
 }
 
-inline std::wstring GetDxErrorStr(HRESULT hr) {
+inline std::wstring GetErrorStr(HRESULT hr) {
 	wchar_t *s = NULL;
 	std::wstring ret;
 	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -55,13 +73,11 @@ inline std::wstring GetDxErrorStr(HRESULT hr) {
 	ret = s;
 	LocalFree(s);
 
-	if (ret.size() >= 1) {
-		if (ret[ret.size() - 1] == L'\n') {
-			ret.erase(ret.size() - 1, 1);
-		}
-		if (ret[ret.size() - 1] == L'\r') {
-			ret.erase(ret.size() - 1, 1);
-		}
+	if (ret.size() >= 1 && ret[ret.size() - 1] == L'\n') {
+		ret.erase(ret.size() - 1, 1);
+	}
+	if (ret.size() >= 1 && ret[ret.size() - 1] == L'\r') {
+		ret.erase(ret.size() - 1, 1);
 	}
 	return ret;
 }
@@ -81,16 +97,16 @@ inline std::string AddrPortToStr(const sockaddr_in *addr) {
 }
 
 inline bool ReadBinaryResource(std::vector<char> &buffer, int resource) {
-	HRSRC hResource = FindResource(g_hInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
+	HRSRC hResource = FindResource(gInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
 	if (hResource == NULL) {
 		return false;
 	}
-	HGLOBAL hResData = LoadResource(g_hInstance, hResource);
+	HGLOBAL hResData = LoadResource(gInstance, hResource);
 	if (hResData == NULL) {
 		return false;
 	}
 	void *data = LockResource(hResData);
-	int dataSize = SizeofResource(g_hInstance, hResource);
+	int dataSize = SizeofResource(gInstance, hResource);
 
 	buffer.resize(dataSize);
 	memcpy(&buffer[0], data, dataSize);
@@ -284,15 +300,6 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 // Use NV12 texture on Windows 7
 inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;
-}
-
-// Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
-inline bool LoadCudaDLL() {
-	__try {
-		return !FAILED(__HrLoadAllImportsForDll("nvcuda.dll"));
-	} __except (EXCEPTION_EXECUTE_HANDLER) {
-	}
-	return false;
 }
 
 typedef void (WINAPI *RtlGetVersion_FUNC)(OSVERSIONINFOEXW*);

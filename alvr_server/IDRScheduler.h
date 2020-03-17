@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 
 class IDRScheduler
 {
@@ -11,13 +11,20 @@ public:
 
 	void OnPacketLoss();
 
-	void OnClientConnected();
+	void OnStreamStart();
 
 	bool CheckIDRInsertion();
+
+	void OnFrameAck(bool result, bool isIDR);
+
+	bool CanEncodeFrame();
 private:
-	static const int MIN_IDR_FRAME_INTERVAL = 2 * 1000 * 1000; // 2-seconds
-	uint64_t m_insertIDRTime = 0;
-	bool m_scheduled = false;
-	IPCCriticalSection m_IDRCS;
+	enum State {
+		NOT_STREAMING, // Client not connected or not requested streaming
+		REQUESTING_IDR, // Wait for IDR insertion. After streaming requested or IDR lost.
+		SENDING_IDR, // Wait for acknoledgement of sent IDR from client.
+		STREAMING // Sending P-Frames after successful ack.
+	};
+	State mState;
 };
 
